@@ -139,18 +139,35 @@ private:
 
 class NDNthread{
 public:
-    NDNthread(vector<string> ips, int id1){
+    NDNthread(vector<string> ips, int id1,  string _dataPrefixUUID, string _prePrefixUUID, string _keyName)
+    {
 
         this->id = id1;
         ndnthhelper.setRegisterIp(ips);
         stop_flag = true;
         this->start();
+        dataPrefixUUID = _dataPrefixUUID;
+        prePrefixUUID = _prePrefixUUID;
+        keyName = _keyName;
+        sequence = 0;
 
     }
     void addTuple(tuple_p tuple)
     {
 
     }
+
+    struct combineTuple
+    {
+        uint8_t *it = NULL;
+        int size = 0;
+        ~combineTuple()
+        {
+            if(it)
+                delete it;
+        }
+    };
+
     static void* runThCap(void* args)
     {
         NDNthread *_this = (NDNthread*)args;
@@ -166,77 +183,48 @@ public:
 
         clock_t start, end;
         clock_t dstart, dend;
-        while(_this->stop_flag)
-        {
+        while(_this->stop_flag) {
             tuple_p tuple;
 
+            dstart = clock();
+            dend = dstart;
+
             start = clock();
-            while(LibPcapHelper::queuelist[_this->id].empty())
+            end = start;
+            while(end - start > 500000)
             {
-                end = clock();
-                if(end - start >= 100000000)
-                {
-                    _this->stop_flag = false;
-                    LibPcapHelper::threadUsage[_this->id] = false;
+                while (LibPcapHelper::queuelist[_this->id].empty()) {
+                    dend = clock();
+                    if (dend - dstart >= 100000000) {
+                        _this->stop_flag = false;
+                        LibPcapHelper::threadUsage[_this->id] = false;
+                        break;
+                    }
+                }
+                if (!_this->stop_flag)
                     break;
-                }
+                LibPcapHelper::queuelist[_this->id].pop(tuple);
             }
-            if(_this->stop_flag == false)
+
+            if (!_this->stop_flag)
                 continue;
-            LibPcapHelper::queuelist[_this->id].pop(tuple);
+
+            start = clock();
 
 
+            string datas(_this->dataPrefixUUID);
+            datas += to_string(_this->sequence);
+            _this->ndnthhelper.putDataToCache(datas, tuple);
+
+            //发送预请求兴趣包
+            string pres(_this->prePrefixUUID);
+            pres += to_string(_this->sequence);
+            _this->ndnthhelper.expressInterest(pres, true);
 
 
-            string key = _this->ndnthhelper.build4TupleKey(tuple->key.src_ip, tuple->key.dst_ip,
-                                                           tuple->key.src_port, tuple->key.dst_port);
-
-            auto res = _this->sequenceTable.get(key);
-
-            if (!res.second) {  //若不存在则将index即自增表的value设为1并插入；再存入缓存中
-                tuple->index = 1;
-
-                auto result_seq = _this->sequenceTable.save(key, tuple->index);
-
-                if (!result_seq) {
-                    cout << "插入失败" << endl;
-                    continue;
-                }
-
-                auto dataPrefixUUID = _this->ndnthhelper.buildName(tuple->key.src_ip, tuple->key.dst_ip,
-                                                                   tuple->key.src_port, tuple->key.dst_port, 4, tuple->index);
-
-
-                _this->ndnthhelper.putDataToCache(dataPrefixUUID.first, tuple);
-
-
-
-
-                auto prefixUUID = _this->ndnthhelper.buildName(tuple->key.src_ip, tuple->key.dst_ip,
-                                                               tuple->key.src_port, tuple->key.dst_port, 3, 1);
-                _this->ndnthhelper.expressInterest(prefixUUID.first);
-            } else {//若存在则将index的值++，并查找悬而未决表
-                if (!_this->sequenceTable.getAndIncreaseSequence(key, tuple)) {
-                    cout << "获取自增序列失败" << endl;
-                    continue;
-                }
-
-                auto dataPrefixUUID = _this->ndnthhelper.buildName(tuple->key.src_ip, tuple->key.dst_ip,
-                                                                   tuple->key.src_port, tuple->key.dst_port, 4, tuple->index);
-
-
-
-                _this->ndnthhelper.putDataToCache(dataPrefixUUID.first, tuple);
-
-                //发送预请求兴趣包
-                auto prePrefixUUID = _this->ndnthhelper.buildName(tuple->key.src_ip, tuple->key.dst_ip,
-                                                                  tuple->key.src_port, tuple->key.dst_port, 3, tuple->index);
-
-                _this->ndnthhelper.expressInterest(prePrefixUUID.first, true);
-
-            }
             end = clock();
-            cout<<"total time is "<<end-start<<"the data size is "<<tuple->ipSize<<endl;
+            cout << "total time is " << end - start << "the data size is " << tuple->ipSize << endl;
+            _this->sequence++;
 
         }
         _this->stop();
@@ -267,10 +255,14 @@ public:
 
 private:
     NDNHelper ndnthhelper;
-    MapCacheHelper<int> sequenceTable;
+    //MapCacheHelper<int> sequenceTable;
+    int sequence;
     pthread_t tid, tid2;
     bool stop_flag;
     int id;
+    string dataPrefixUUID;
+    string prePrefixUUID;
+    string keyName;
 
 };
 

@@ -87,7 +87,7 @@ public:
      *          type = 4    => /IP/TCP
      * @return <前缀, uuid>
      */
-    pair<string, string> buildName(uint32_t sip, uint32_t dip, uint16_t sport, uint16_t dport, int type, int seq = -1, string uid = "");
+    string buildName(uint32_t sip, uint32_t dip, uint16_t sport, uint16_t dport, int type, string uid="");
 
     /**
      * 够着四元组组成的key
@@ -140,7 +140,7 @@ public: //静态变量
     static const string PREFIX_TCP_PRE_REQUEST;
     static const string PREFIX_TCP_REQUEST_DATA;
     static const string KEY_CONFIG_REGISTER_IP;
-	static const int NUM_OF_GUEST = 60;
+	static const int NUM_OF_GUEST = 100;
 	static int interestPacketNum;
 private:
     Face face;

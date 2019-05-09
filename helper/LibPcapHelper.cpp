@@ -135,7 +135,13 @@ void LibPcapHelper::deal(tuple_p tuple) {
                 return ;
             tuple5[key] = i;
             ituple[i] = key;
-            ndnthread[i] = new NDNthread(this->ndnHelper->getRegisterIp(), i);
+            string _dataPrefixUUID = ndnHelper->buildName(tuple->key.src_ip, tuple->key.dst_ip,
+                                                                 tuple->key.src_port, tuple->key.dst_port, 4);
+            string _prePrefixUUID = ndnHelper->buildName(tuple->key.src_ip, tuple->key.dst_ip,
+                                                                tuple->key.src_port, tuple->key.dst_port, 3);
+            string _keyName = ndnHelper->build4TupleKey(tuple->key.src_ip, tuple->key.dst_ip,
+                                                               tuple->key.src_port, tuple->key.dst_port);
+            ndnthread[i] = new NDNthread(this->ndnHelper->getRegisterIp(), i,  _dataPrefixUUID, _prePrefixUUID, _keyName);
             queuelist[i].push(tuple);
             threadUsage[i] = true;
         }
@@ -149,14 +155,14 @@ void LibPcapHelper::deal(tuple_p tuple) {
         string uuid = this->generateUUID();
 
         auto dataPrefixUUID = ndnHelper->buildName(tuple->key.src_ip, tuple->key.dst_ip,
-                                                   tuple->key.src_port, tuple->key.dst_port, 2, -1, uuid);
+                                                   tuple->key.src_port, tuple->key.dst_port, 2, uuid);
 
-        ndnHelper->putDataToCache(dataPrefixUUID.first, tuple);
+        ndnHelper->putDataToCache(dataPrefixUUID, tuple);
 
         auto prefixUUID = ndnHelper->buildName(tuple->key.src_ip, tuple->key.dst_ip,
-                                               tuple->key.src_port, tuple->key.dst_port, 1, -1, uuid);
+                                               tuple->key.src_port, tuple->key.dst_port, 1, uuid);
 
-        ndnHelper->expressInterest(prefixUUID.first);
+        ndnHelper->expressInterest(prefixUUID);
     }
 
 }

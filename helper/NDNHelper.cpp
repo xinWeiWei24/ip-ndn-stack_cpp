@@ -237,10 +237,10 @@ void NDNHelper::putData(const string &name, const tuple_p tuple) {
 *          type = 4    => /IP/TCP
 * @return   <前缀，uuid>
 */
-pair<string, string>  NDNHelper::buildName(uint32_t sip, uint32_t dip, uint16_t sport, uint16_t dport, int type, int seq,
-                            string uid) {
+string  NDNHelper::buildName(uint32_t sip, uint32_t dip, uint16_t sport, uint16_t dport, int type, string uid) {
 
     //网络字节序转主机字节序
+    //string uid = "";
     sip = ntohl(sip);
     dip = ntohl(dip);
     sport = ntohs(sport);
@@ -271,19 +271,23 @@ pair<string, string>  NDNHelper::buildName(uint32_t sip, uint32_t dip, uint16_t 
 
     switch (type) {
         case 1:
-            return make_pair(NDNHelper::PREFIX_PRE_REQUEST + "/" + dstIP + "/" + sourceIP + "/" + uid, uid);
+            //return make_pair(NDNHelper::PREFIX_PRE_REQUEST + "/" + dstIP + "/" + sourceIP + "/" + uid, uid);
+            return NDNHelper::PREFIX_PRE_REQUEST + "/" + dstIP + "/" + sourceIP + "/" + uid;
         case 2:
-            return make_pair(NDNHelper::PREFIX_REQUEST_DATA + "/" + sourceIP + "/" + dstIP + "/" + uid, uid);
+            //return make_pair(NDNHelper::PREFIX_REQUEST_DATA + "/" + sourceIP + "/" + dstIP + "/" + uid, uid);
+            return NDNHelper::PREFIX_REQUEST_DATA + "/" + sourceIP + "/" + dstIP + "/" + uid;
         case 3:
             uid = sourcePort + "-" + dstPort +
-                  "-" + to_string(seq);
-            return make_pair(NDNHelper::PREFIX_TCP_PRE_REQUEST + "/" + dstIP + "/" + sourceIP + "/" + uid, uid);
+                  "-" ;//+ to_string(seq);
+            //return make_pair(NDNHelper::PREFIX_TCP_PRE_REQUEST + "/" + dstIP + "/" + sourceIP + "/" + uid, uid);
+            return NDNHelper::PREFIX_TCP_PRE_REQUEST + "/" + dstIP + "/" + sourceIP + "/" + uid;
         case 4:
             uid = sourcePort + "-" + dstPort +
-                  "-" + to_string(seq);
-            return make_pair(NDNHelper::PREFIX_TCP_REQUEST_DATA + "/" + sourceIP + "/" + dstIP + "/" + uid, uid);
+                  "-" ;//+ to_string(seq);
+            //return make_pair(NDNHelper::PREFIX_TCP_REQUEST_DATA + "/" + sourceIP + "/" + dstIP + "/" + uid, uid);
+            return NDNHelper::PREFIX_TCP_REQUEST_DATA + "/" + sourceIP + "/" + dstIP + "/" + uid;
         default:
-            return make_pair("", "");
+            return uid;
     }
 }
 
