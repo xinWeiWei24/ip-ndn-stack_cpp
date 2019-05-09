@@ -13,10 +13,14 @@ LibPcapHelper::LibPcapHelper(const string &configFilePath)
         mPcap.activate();
         mPcap.setPacketFilter(filter);
         m_socket.assign(mPcap.getFd());
+        stop_flag = true;
+        threadNum = 0;
+        for(int i = 0; i < MAX_THREAD_NUM; i++)
+            ndnthread[i] = NULL;
     } catch (const PcapHelper::Error &e) {
         BOOST_THROW_EXCEPTION(PcapHelper::Error(e.what()));
     }
-    asyncRead();
+    //asyncRead();
 }
 
 void LibPcapHelper::bindNDNHelper(NDNHelper *ndnHelper) {
@@ -67,7 +71,11 @@ void LibPcapHelper::handleError(const std::string &errorMessage) {
 
 void LibPcapHelper::start() {
     cout << "start" << endl;
-    service.run();
+    //service.run();
+    int ret = pthread_create(&this->tid,NULL,runCap,(void*)this);
+    if(ret != 0){
+        printf("query thread start error : error code = %d\n",ret) ;
+    }
 }
 
 void LibPcapHelper::close() {
@@ -79,6 +87,15 @@ void LibPcapHelper::close() {
         m_socket.cancel(error);
         m_socket.close(error);
     }
+    stop_flag = false;
+    pthread_join(this->tid, NULL);
+    unordered_map<string,int>::iterator i;
+
+    for (i=tuple5.begin();i!=tuple5.end();i++)
+    {
+        ndnthread[i->second]->stop();
+    }
+
     mPcap.close();
 }
 
@@ -90,45 +107,44 @@ void LibPcapHelper::close() {
 void LibPcapHelper::deal(tuple_p tuple) {
 
     if (tuple->key.proto == IPPROTO_TCP || tuple->key.proto == IPPROTO_UDP) {
-        string key = ndnHelper->build4TupleKey(tuple->key.src_ip, tuple->key.dst_ip,
+        string key = this->build4TupleKey(tuple->key.src_ip, tuple->key.dst_ip,
                                                tuple->key.src_port, tuple->key.dst_port);
 
-        auto res = sequenceTable->get(key);
+        if(tuple5.find(key) == tuple5.end())
+        {
+            int i = 0;
 
-        if (!res.second) {  //若不存在则将index即自增表的value设为1并插入；再存入缓存中
-            tuple->index = 1;
-            auto result_seq = sequenceTable->save(key, tuple->index);
-            if (!result_seq) {
-                cout << "插入失败" << endl;
-                return;
+            i = MAX_THREAD_NUM;
+            for(int j = 0; j < MAX_THREAD_NUM; j++)
+            {
+                if(threadUsage[j] == false)
+                {
+                    if(ndnthread[j])
+                    {
+                        delete ndnthread[j];
+                        ndnthread[j] = NULL;
+                        auto ikey = ituple[i];
+                        tuple5.erase(ikey);
+                    }
+                    i = j;
+                    break;
+                }
             }
 
-            auto dataPrefixUUID = ndnHelper->buildName(tuple->key.src_ip, tuple->key.dst_ip,
-                                                       tuple->key.src_port, tuple->key.dst_port, 4, tuple->index);
-
-            ndnHelper->putDataToCache(dataPrefixUUID.first, tuple);
-
-            auto prefixUUID = ndnHelper->buildName(tuple->key.src_ip, tuple->key.dst_ip,
-                                                   tuple->key.src_port, tuple->key.dst_port, 3, 1);
-            ndnHelper->expressInterest(prefixUUID.first);
-            return;
-        } else {//若存在则将index的值++，并查找悬而未决表
-            if (!this->sequenceTable->getAndIncreaseSequence(key, tuple)) {
-                cout << "获取自增序列失败" << endl;
-                return;
-            }
-            auto dataPrefixUUID = ndnHelper->buildName(tuple->key.src_ip, tuple->key.dst_ip,
-                                                       tuple->key.src_port, tuple->key.dst_port, 4, tuple->index);
-
-            ndnHelper->putDataToCache(dataPrefixUUID.first, tuple);
-
-            //发送预请求兴趣包
-            auto prePrefixUUID = ndnHelper->buildName(tuple->key.src_ip, tuple->key.dst_ip,
-                                                      tuple->key.src_port, tuple->key.dst_port, 3, tuple->index);
-            ndnHelper->expressInterest(prePrefixUUID.first, true);
-            return;
+            if(i == MAX_THREAD_NUM)
+                return ;
+            tuple5[key] = i;
+            ituple[i] = key;
+            ndnthread[i] = new NDNthread(this->ndnHelper->getRegisterIp(), i);
+            queuelist[i].push(tuple);
+            threadUsage[i] = true;
         }
-        //	tuple_p tuple1 = res.first;
+        else
+        {
+            int t = tuple5[key];
+            //ndnthread[t]->addTuple(tuple);
+            queuelist[t].push(tuple);
+        }
     } else {//为其他协议包用原来的方式传输
         string uuid = this->generateUUID();
 
@@ -155,5 +171,36 @@ string LibPcapHelper::generateUUID() {
     return tmp_uuid;
 }
 
+string LibPcapHelper::build4TupleKey(uint32_t sip, uint32_t dip, uint16_t sport, uint16_t dport) {
+    //网络字节序转主机字节序
+    sip = ntohl(sip);
+    dip = ntohl(dip);
+    sport = ntohs(sport);
+    dport = ntohs(dport);
+
+    //得到source ip
+    string sourceIP = to_string((sip >> 24) & 0xFF);
+    sourceIP.append(".");
+    sourceIP.append(to_string((sip >> 16) & 0xFF));
+    sourceIP.append(".");
+    sourceIP.append(to_string((sip >> 8) & 0xFF));
+    sourceIP.append(".");
+    sourceIP.append(to_string((sip >> 0) & 0xFF));
+
+    //得到目的 ip
+    string dstIP = to_string((dip >> 24) & 0xFF);
+    dstIP.append(".");
+    dstIP.append(to_string((dip >> 16) & 0xFF));
+    dstIP.append(".");
+    dstIP.append(to_string((dip >> 8) & 0xFF));
+    dstIP.append(".");
+    dstIP.append(to_string((dip >> 0) & 0xFF));
+
+    //得到端口号
+    string sourcePort = to_string(sport);
+    string dstPort = to_string(dport);
+
+    return sourceIP + "/" + dstIP + "/" + sourcePort + "/" + dstPort;
+}
 
 

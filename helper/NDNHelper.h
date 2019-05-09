@@ -20,6 +20,7 @@
 #include <vector>
 #include <chrono>
 #include <boost/thread/pthread/shared_mutex.hpp>
+#include <time.h>
 
 
 using namespace ndn;
@@ -109,6 +110,15 @@ public:
      * @param tuple
      */
     void putDataToCache(const string &interestName, tuple_p tuple);
+
+    vector<string> getRegisterIp(){
+        return registerIp;
+    }
+
+    void setRegisterIp(vector<string> ips)
+    {
+        this->registerIp = ips;
+    }
 
 public: //回调
     void onData(const Interest &interest, const Data &data, bool isPre, bool isTCP);

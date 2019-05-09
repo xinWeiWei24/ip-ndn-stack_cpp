@@ -288,35 +288,45 @@ pair<string, string>  NDNHelper::buildName(uint32_t sip, uint32_t dip, uint16_t 
 }
 
 string NDNHelper::build4TupleKey(uint32_t sip, uint32_t dip, uint16_t sport, uint16_t dport) {
+
+    string s ;
+    s += to_string(sip)+to_string(dip)+to_string(sport)+to_string(dport);
+    return s;
     //网络字节序转主机字节序
-    sip = ntohl(sip);
+    /*sip = ntohl(sip);
     dip = ntohl(dip);
     sport = ntohs(sport);
     dport = ntohs(dport);
 
+    char sipaddr[20], dipaddr[20];
+    sprintf(sipaddr, "%d.%d.%d.%d", sip & 0xff, (sip >> 8) & 0xff, (sip >> 16) & 0xff, (sip >> 24) & 0xff);
+    sprintf(dipaddr, "%d.%d.%d.%d", dip & 0xff, (dip >> 8) & 0xff, (dip >> 16) & 0xff, (dip >> 24) & 0xff);
+
     //得到source ip
-    string sourceIP = to_string((sip >> 24) & 0xFF);
+    string sourceIP(sipaddr);
+    string dstIP(dipaddr);*/
+    /*string sourceIP = to_string((sip >> 24) & 0xFF);
     sourceIP.append(".");
     sourceIP.append(to_string((sip >> 16) & 0xFF));
     sourceIP.append(".");
     sourceIP.append(to_string((sip >> 8) & 0xFF));
     sourceIP.append(".");
-    sourceIP.append(to_string((sip >> 0) & 0xFF));
+    sourceIP.append(to_string((sip >> 0) & 0xFF));*/
 
     //得到目的 ip
-    string dstIP = to_string((dip >> 24) & 0xFF);
+    /*string dstIP = to_string((dip >> 24) & 0xFF);
     dstIP.append(".");
     dstIP.append(to_string((dip >> 16) & 0xFF));
     dstIP.append(".");
     dstIP.append(to_string((dip >> 8) & 0xFF));
     dstIP.append(".");
-    dstIP.append(to_string((dip >> 0) & 0xFF));
+    dstIP.append(to_string((dip >> 0) & 0xFF));*/
 
     //得到端口号
-    string sourcePort = to_string(sport);
+    /*string sourcePort = to_string(sport);
     string dstPort = to_string(dport);
 
-    return sourceIP + "/" + dstIP + "/" + sourcePort + "/" + dstPort;
+    return sourceIP + "/" + dstIP + "/" + sourcePort + "/" + dstPort;*/
 }
 
 long NDNHelper::getCurTime() {
@@ -327,11 +337,14 @@ long NDNHelper::getCurTime() {
 }
 
 void NDNHelper::putDataToCache(const string &interestName, tuple_p tuple) {
+    string dsha = "id:/localhost/identity/digest-sha256";
+    ndn::security::SigningInfo si(dsha);
     Data data(interestName);
     data.setContent(tuple->pkt, tuple->ipSize);
 //    {
 //        boost::unique_lock<boost::shared_mutex> m(signMutex);
-        KeyChain_.sign(data);
+        KeyChain_.sign(data,si);
+
 //    }
     this->face.put(data);
 }

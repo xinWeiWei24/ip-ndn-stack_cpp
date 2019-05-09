@@ -58,7 +58,7 @@ static inline uint64_t now_us ()
 {
     // Use POSIX gettimeofday function to get precise time
     struct timeval tv;
-    gettimeofday(&tv, NULL);
+
     return (tv.tv_sec * (uint64_t) 1000000 + tv.tv_usec);
 }
 

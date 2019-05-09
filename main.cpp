@@ -7,7 +7,8 @@
 #include <execinfo.h>
 
 using namespace std;
-
+boost::lockfree::queue<tuple_p,boost::lockfree::capacity<40000>> LibPcapHelper::queuelist[10];
+bool LibPcapHelper::threadUsage[MAX_THREAD_NUM] = {false};
 void dealNDN(void *arg) {
     auto *ndnHelper = (NDNHelper *) arg;
     ndnHelper->start();
