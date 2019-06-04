@@ -44,8 +44,10 @@ namespace IP_NDN_STACK {
 //            int to_ms = jsoncppHelper.getInt("pcap_to_ms"); //the value of to_ms is the read timeout for pcap handler, in ms
 
             char errbuf[PCAP_ERRBUF_SIZE] = {};
-                m_pcap = pcap_create(interfaceName.c_str(), errbuf);
-            bpf_u_int32 net;
+           
+	    m_pcap = pcap_create(interfaceName.c_str(), errbuf);
+	    int status;
+	    bpf_u_int32 net;
             bpf_u_int32 mask;
             pcap_lookupnet(interfaceName.c_str(), &net, &mask, errbuf);
             this->net = net;

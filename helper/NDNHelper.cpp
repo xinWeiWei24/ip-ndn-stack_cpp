@@ -102,7 +102,7 @@ void NDNHelper::bindPrefixGuestTable(SetHelper<string> *prefixGuestTable) {
  */
 void NDNHelper::dealOnData(const Data &data, bool isPre, bool isTCP) {
     string name = data.getName().toUri();
-//    cout << "收到data包： " << name << endl;
+   //cout << "收到data包： " << name << endl;
     if(!isPre) {
         vector<string> fileds;
         boost::split(fileds, name, boost::is_any_of("/"));
@@ -124,7 +124,7 @@ void NDNHelper::dealOnData(const Data &data, bool isPre, bool isTCP) {
 void NDNHelper::dealOnInterest(const Interest &interest, bool isPre, bool isTCP) {
     string interest_name = interest.getName().toUri();
     //string pre = "/IP/pre/";
-//    cout << "onInterest: " << interest_name << endl;
+ //   cout << "onInterest: " << interest_name << endl;
 
     // 只处理预请求，正式请求
     if (isPre) {
@@ -146,21 +146,23 @@ void NDNHelper::dealOnInterest(const Interest &interest, bool isPre, bool isTCP)
             //发一个正式拉取的请求
             this->expressInterest(next_name, false, true);
 
-			if (this->prefixGuestTable->find(next_name)) {
+	/*		if (this->prefixGuestTable->find(next_name)) {
             	this->prefixGuestTable->erase(next_name);   //删除已经发送这条
 			}
-
+*/
             vector<string> uuid_fileds;
             boost::split(uuid_fileds, uid, boost::is_any_of("-"));
-            int num_of_sequence = boost::lexical_cast<int>(uuid_fileds[2]);
+            //int num_of_sequence = boost::lexical_cast<int>(uuid_fileds[2]);
+            int num_of_sequence = atoi(uuid_fileds[2].c_str());
 
             guess_name.append("/" + uuid_fileds[0] + "-" + uuid_fileds[1] + "-");
             for (int i = 0; i < NUM_OF_GUEST; i++) {
                 string g_name = guess_name;
                 g_name.append(to_string(++num_of_sequence));
-                if (this->prefixGuestTable->saveConcurrence(g_name)) {
+                /*if (this->prefixGuestTable->saveConcurrence(g_name)) {
                     this->expressInterest(g_name, false, true);
-                }
+                }*/
+                this->expressInterest(g_name, false, true);
             }
         } else {
 //            cout << "pre other" << endl;
@@ -209,9 +211,9 @@ void NDNHelper::onRegisterFailed(const Name &prefix) {
 
 void NDNHelper::expressInterest(string name, bool isPre, bool isTCP) {
 	Interest interest(name);
-	interest.setInterestLifetime(2_s);	//兴趣报存活时间
+	interest.setInterestLifetime(3_s);	//兴趣报存活时间
     NDNHelper::interestPacketNum++;
-	cout << "express interest: " << name << "(" << NDNHelper::interestPacketNum << ")" << endl;
+//	cout << "express interest: " << name << "(" << NDNHelper::interestPacketNum << ")" << endl;
     this->face.expressInterest(interest, bind(&NDNHelper::onData, this, _1, _2, isPre, isTCP),
                                bind(&NDNHelper::onNack, this, _1, _2), bind(&NDNHelper::onTimeout, this, _1, isPre));
 }
@@ -272,10 +274,10 @@ string  NDNHelper::buildName(uint32_t sip, uint32_t dip, uint16_t sport, uint16_
     switch (type) {
         case 1:
             //return make_pair(NDNHelper::PREFIX_PRE_REQUEST + "/" + dstIP + "/" + sourceIP + "/" + uid, uid);
-            return NDNHelper::PREFIX_PRE_REQUEST + "/" + dstIP + "/" + sourceIP + "/" + uid;
+            return NDNHelper::PREFIX_PRE_REQUEST + "/" + dstIP + "/" + sourceIP + "/" + uid ;
         case 2:
             //return make_pair(NDNHelper::PREFIX_REQUEST_DATA + "/" + sourceIP + "/" + dstIP + "/" + uid, uid);
-            return NDNHelper::PREFIX_REQUEST_DATA + "/" + sourceIP + "/" + dstIP + "/" + uid;
+            return NDNHelper::PREFIX_REQUEST_DATA + "/" + sourceIP + "/" + dstIP + "/" + uid ;
         case 3:
             uid = sourcePort + "-" + dstPort +
                   "-" ;//+ to_string(seq);

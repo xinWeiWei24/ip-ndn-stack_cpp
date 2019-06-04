@@ -6,13 +6,12 @@
 
 
 LibPcapHelper::LibPcapHelper(const string &configFilePath)
-        : mPcap(configFilePath), m_socket(service), threadPool(THREAD_POOL_SIZE) {
+        : mPcap(configFilePath), threadPool(THREAD_POOL_SIZE) {
     JSONCPPHelper jsoncppHelper(configFilePath);
     string filter = jsoncppHelper.getString("pcap_dstmac");
     try {
         mPcap.activate();
         mPcap.setPacketFilter(filter);
-        m_socket.assign(mPcap.getFd());
         stop_flag = true;
         threadNum = 0;
         for(int i = 0; i < MAX_THREAD_NUM; i++)
@@ -41,13 +40,13 @@ void LibPcapHelper::bindSequenceTable(MapCacheHelper<int> *sequenceTable) {
 }
 
 
-void LibPcapHelper::asyncRead() {
-    m_socket.async_read_some(boost::asio::null_buffers(),
-                             [this](const auto &e, auto) { this->handleRead(e); });
-}
+/*void LibPcapHelper::asyncRead() {
+//    m_socket.async_read_some(boost::asio::null_buffers(),
+  //                           [this](const auto &e, auto) { this->handleRead(e); });
+}*/
 
 
-void LibPcapHelper::handleRead(const boost::system::error_code &error) {
+/*void LibPcapHelper::handleRead(const boost::system::error_code &error) {
     if (error) {
         cout << "error: " << error;
         return;
@@ -62,12 +61,12 @@ void LibPcapHelper::handleRead(const boost::system::error_code &error) {
 //        }, this);
     }
     asyncRead();
-}
+}*/
 
-void LibPcapHelper::handleError(const std::string &errorMessage) {
+/*void LibPcapHelper::handleError(const std::string &errorMessage) {
     cerr << "ERROR: " << errorMessage << endl;
     close();
-}
+}*/
 
 void LibPcapHelper::start() {
     cout << "start" << endl;
@@ -80,13 +79,13 @@ void LibPcapHelper::start() {
 
 void LibPcapHelper::close() {
     //free the pcap handler
-    if (m_socket.is_open()) {
+    /*if (m_socket.is_open()) {
         // Cancel all outstanding operations and close the socket.
         // Use the non-throwing variants and ignore errors, if any.
         boost::system::error_code error;
         m_socket.cancel(error);
         m_socket.close(error);
-    }
+    }*/
     stop_flag = false;
     pthread_join(this->tid, NULL);
     unordered_map<string,int>::iterator i;
@@ -105,7 +104,6 @@ void LibPcapHelper::close() {
  * @param tuple
  */
 void LibPcapHelper::deal(tuple_p tuple) {
-
     if (tuple->key.proto == IPPROTO_TCP || tuple->key.proto == IPPROTO_UDP) {
         string key = this->build4TupleKey(tuple->key.src_ip, tuple->key.dst_ip,
                                                tuple->key.src_port, tuple->key.dst_port);
@@ -163,6 +161,7 @@ void LibPcapHelper::deal(tuple_p tuple) {
                                                tuple->key.src_port, tuple->key.dst_port, 1, uuid);
 
         ndnHelper->expressInterest(prefixUUID);
+	cout<<"not TCP "<<prefixUUID<<endl;
     }
 
 }

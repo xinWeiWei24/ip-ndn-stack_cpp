@@ -10,7 +10,11 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-
+#include <sys/ioctl.h>
+#include <linux/if.h>
+#include <linux/if_packet.h>
+#include <linux/if_ether.h>
+#include <unistd.h>
 using namespace std;
 class RawSocketHelper {
 
@@ -29,7 +33,7 @@ public:
 
 private:
     int sockfd;     //原始套接字handler
-
+    struct ifreq req;
 };
 
 #endif //IP_NDN_STACK_CPP_RAWSOCKETHELPER_H

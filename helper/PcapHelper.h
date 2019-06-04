@@ -1,8 +1,8 @@
 #ifndef NFD_DAEMON_FACE_PCAP_HELPER_HPP
 #define NFD_DAEMON_FACE_PCAP_HELPER_HPP
-
+#define HAVE_PF_RING
 #include <iostream>
-#include <pcap/pcap.h>
+#include </usr/local/include/pcap/pcap.h>
 #include <unistd.h>
 #include <tuple>
 #include "packet.h"

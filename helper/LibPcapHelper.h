@@ -19,7 +19,6 @@
 #include <sys/wait.h>
 #include <errno.h>
 #include <boost/thread.hpp>
-#include <boost/asio.hpp>
 #include "ThreadPool.h"
 
 #include<pthread.h>
@@ -92,7 +91,7 @@ public:
 
 
 protected:
-    void
+  /*  void
     asyncRead();
 
     void
@@ -100,11 +99,9 @@ protected:
 
     void
     handleError(const std::string &errorMessage);
-
+*/
 private:
     PcapHelper mPcap;
-    boost::asio::io_service service;
-    boost::asio::posix::stream_descriptor m_socket;
     NDNHelper *ndnHelper;
     MapCacheHelper<tuple_p> *cacheHelper;               //缓存表
     MapCacheHelper<long> *pendingInterestTable;       //悬而未决表
@@ -171,7 +168,7 @@ public:
     static void* runThCap(void* args)
     {
         NDNthread *_this = (NDNthread*)args;
-        /*int pid = syscall(SYS_gettid);
+/*        int pid = syscall(SYS_gettid);
         string s = "taskset -cp ";
 
         //string cpu = "0,10 ";
@@ -179,8 +176,8 @@ public:
         s = s+ to_string(mod)+","+to_string(mod+10)+" ";
 
         s += to_string(pid);
-        system(s.data());*/
-
+        system(s.data());
+*/
         clock_t start, end;
         clock_t dstart, dend;
         while(_this->stop_flag) {
@@ -191,20 +188,18 @@ public:
 
             start = clock();
             end = start;
-            while(end - start > 500000)
-            {
-                while (LibPcapHelper::queuelist[_this->id].empty()) {
-                    dend = clock();
-                    if (dend - dstart >= 100000000) {
-                        _this->stop_flag = false;
-                        LibPcapHelper::threadUsage[_this->id] = false;
-                        break;
-                    }
-                }
-                if (!_this->stop_flag)
+
+            while (LibPcapHelper::queuelist[_this->id].empty()) {
+                dend = clock();
+                if (dend - dstart >= 100000000) {
+                    _this->stop_flag = false;
+                    LibPcapHelper::threadUsage[_this->id] = false;
                     break;
-                LibPcapHelper::queuelist[_this->id].pop(tuple);
+                }
             }
+            if (!_this->stop_flag)
+                break;
+            LibPcapHelper::queuelist[_this->id].pop(tuple);
 
             if (!_this->stop_flag)
                 continue;
@@ -217,13 +212,15 @@ public:
             _this->ndnthhelper.putDataToCache(datas, tuple);
 
             //发送预请求兴趣包
+	    if(_this->sequence % 40 == 0){
             string pres(_this->prePrefixUUID);
             pres += to_string(_this->sequence);
             _this->ndnthhelper.expressInterest(pres, true);
+	    }
 
 
             end = clock();
-            cout << "total time is " << end - start << "the data size is " << tuple->ipSize << endl;
+            //cout << "total time is " << end - start << "the data size is " << tuple->ipSize << endl;
             _this->sequence++;
 
         }
